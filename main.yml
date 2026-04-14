@@ -1,40 +1,60 @@
-name: Manual Build APK
+name: Super Build APK
 
 on:
-  workflow_dispatch: # هذا يجعلك تشغل البناء يدوياً بضغطة زر
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Java
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
+          cache: 'gradle'
 
-      - name: Setup Flutter
+      - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.x'
+          cache: true
 
-      - name: Build Process
+      - name: Auto-Detect Project and Build
         run: |
-          # البحث عن ملف المشروع وتشغيله
-          PROJECT_ROOT=$(find . -name "pubspec.yaml" -exec dirname {} \;)
-          cd $PROJECT_ROOT
-          flutter pub get
-          flutter build apk --debug
+          # 1. البحث عن المجلد الذي يحتوي على ملف pubspec.yaml
+          PROJECT_ROOT=$(find . -name "pubspec.yaml" -exec dirname {} \; | head -n 1)
           
-          # تجهيز المجلد للتحميل
-          mkdir -p $GITHUB_WORKSPACE/output_apk
-          cp build/app/outputs/flutter-apk/app-debug.apk $GITHUB_WORKSPACE/output_apk/
+          if [ -z "$PROJECT_ROOT" ]; then
+            echo "خطأ: لم يتم العثور على ملفات مشروع فلاتر في هذا المستودع!"
+            exit 1
+          fi
+          
+          echo "تم العثور على المشروع في: $PROJECT_ROOT"
+          cd "$PROJECT_ROOT"
+          
+          # 2. تنظيف المشروع لضمان عدم وجود ملفات قديمة معطوبة
+          flutter clean
+          
+          # 3. تحميل المكتبات
+          flutter pub get
+          
+          # 4. بناء الـ APK (نسخة Debug لضمان النجاح بدون مفاتيح توقيع)
+          flutter build apk --debug --suppress-analytics
+          
+          # 5. تجهيز الملف للرفع
+          mkdir -p $GITHUB_WORKSPACE/drop
+          find . -name "*.apk" -exec cp {} $GITHUB_WORKSPACE/drop/my-app.apk \;
 
-      - name: Download Your APK
+      - name: Upload Finished APK
         uses: actions/upload-artifact@v4
         with:
-          name: My_Application_APK
-          path: output_apk/app-debug.apk
+          name: Download-My-App
+          path: drop/my-app.apk
+          if-no-files-found: error
