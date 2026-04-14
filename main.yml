@@ -1,45 +1,40 @@
-name: Build Android APK
+name: Manual Build APK
 
 on:
-  push:
-    branches:
-      - main
-      - master
-  workflow_dispatch:
+  workflow_dispatch: # هذا يجعلك تشغل البناء يدوياً بضغطة زر
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Install Flutter
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.x'
 
-      - name: Fix Dependencies and Build
+      - name: Build Process
         run: |
-          # هذا السطر يبحث عن المجلد الذي يحتوي على ملف pubspec.yaml ويدخل إليه
-          PROJECT_PATH=$(find . -name "pubspec.yaml" -exec dirname {} \;)
-          echo "Found project at: $PROJECT_PATH"
-          cd $PROJECT_PATH
+          # البحث عن ملف المشروع وتشغيله
+          PROJECT_ROOT=$(find . -name "pubspec.yaml" -exec dirname {} \;)
+          cd $PROJECT_ROOT
           flutter pub get
           flutter build apk --debug
-          # نقل الملف لمكان معروف لرفعه لاحقاً
-          mkdir -p $GITHUB_WORKSPACE/output
-          cp build/app/outputs/flutter-apk/app-debug.apk $GITHUB_WORKSPACE/output/app-debug.apk
+          
+          # تجهيز المجلد للتحميل
+          mkdir -p $GITHUB_WORKSPACE/output_apk
+          cp build/app/outputs/flutter-apk/app-debug.apk $GITHUB_WORKSPACE/output_apk/
 
-      - name: Upload APK
+      - name: Download Your APK
         uses: actions/upload-artifact@v4
         with:
-          name: my-app-apk
-          path: output/app-debug.apk
+          name: My_Application_APK
+          path: output_apk/app-debug.apk
